@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ffd6e6">
+<meta name="mobile-web-app-capable" content="yes">
+<title>바삭 버터 말랑이</title>
+<meta name="description" content="누르면 바삭, 당기면 쭉 늘어나는 3D 버터바 말랑이 — three.js 아이용 터치 장난감">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='18' width='52' height='28' rx='10' fill='%23ffe07a'/%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent; font-family: "Jua", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+  body { background: radial-gradient(circle at 50% 30%, #fff6fa 0%, #ffe1ee 45%, #d9f1ff 100%); }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0); padding: 10px 14px; display: flex;
+    justify-content: space-between; align-items: flex-start; pointer-events: none; }
+  .score { background: rgba(255,255,255,.85); border-radius: 22px; padding: 6px 18px 8px; box-shadow: 0 4px 0 #f3b6cd; text-align: center; }
+  .score .lbl { font-size: 15px; color: #d0567f; font-weight: 800; }
+  #count { font-size: 44px; font-weight: 900; color: #ff5c8a; line-height: 1; display: inline-block; }
+  #count.pop { animation: pop .18s ease-out; }
+  @keyframes pop { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .right { text-align: right; }
+  #stars { font-size: 34px; letter-spacing: 2px; }
+  .star { color: #e7d6de; text-shadow: 0 2px 0 #fff; }
+  .star.on { color: #ffc93c; text-shadow: 0 2px 0 #e59a00; animation: pop .3s; }
+  #goal { font-size: 14px; color: #8a5a6e; font-weight: 700; background: rgba(255,255,255,.7); border-radius: 12px; padding: 2px 10px; display: inline-block; }
+  #stretch { margin-top: 6px; font-size: 18px; font-weight: 900; color: #2e9e88; min-height: 22px; }
+  .bestline { font-size: 12px; color: #a07b8b; margin-top: 4px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0); padding: 10px 10px 14px; display: flex;
+    flex-wrap: wrap; justify-content: center; gap: 10px; }
+  #swatches { display: flex; gap: 10px; }
+  .sw { width: 64px; height: 64px; border-radius: 20px; border: 4px solid #fff; box-shadow: 0 4px 0 rgba(0,0,0,.12);
+    font: inherit; font-weight: 900; font-size: 15px; color: #5a3a48; position: relative; }
+  .sw.sel { border-color: #ff5c8a; transform: translateY(-4px); box-shadow: 0 8px 0 rgba(255,92,138,.35); }
+  .sw.locked { filter: grayscale(.85) brightness(.9); }
+  .sw.locked span::before { content: "잠김 "; font-size: 11px; display: block; }
+  .btn { height: 64px; min-width: 76px; padding: 0 14px; border-radius: 20px; border: none; font: inherit; font-weight: 900;
+    font-size: 17px; color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.18); }
+  .btn:active, .sw:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+  #btnTop { background: #ff8fb3; } #btnSound { background: #7cc4ff; } #btnReset { background: #b38bff; } #btnFull { background: #6fd3a8; }
+  #banner { position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%) scale(0); font-size: 54px; font-weight: 900;
+    color: #fff; -webkit-text-stroke: 3px #ff5c8a; text-shadow: 0 6px 0 #ff5c8a; pointer-events: none; white-space: nowrap; }
+  #banner.show { animation: banner 1.6s ease-out forwards; }
+  @keyframes banner { 0% { transform: translate(-50%,-50%) scale(0) rotate(-8deg); } 20% { transform: translate(-50%,-50%) scale(1.15) rotate(3deg); }
+    35% { transform: translate(-50%,-50%) scale(1) rotate(0); } 80% { opacity: 1; } 100% { transform: translate(-50%,-70%) scale(1); opacity: 0; } }
+  #toast { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(90,58,72,.88); color: #fff;
+    padding: 10px 20px; border-radius: 20px; font-size: 18px; font-weight: 800; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+  #intro { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255,240,247,.82); transition: opacity .35s; z-index: 5; text-align: center; padding: 20px; }
+  #intro.hide { opacity: 0; pointer-events: none; }
+  #intro h1 { margin: 0 0 6px; font-size: 46px; color: #ff5c8a; text-shadow: 0 4px 0 #fff; }
+  #intro p { margin: 4px 0; font-size: 19px; color: #7a4e60; font-weight: 700; }
+  #start { margin-top: 22px; height: 84px; padding: 0 56px; border: none; border-radius: 30px; background: #ff5c8a; color: #fff;
+    font: inherit; font-size: 34px; font-weight: 900; box-shadow: 0 7px 0 #c93a66; animation: bob 1.2s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+  @media (max-width: 420px) { .sw { width: 54px; height: 54px; font-size: 13px; } .btn { height: 54px; min-width: 62px; font-size: 15px; }
+    #count { font-size: 36px; } #stars { font-size: 28px; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <div class="score"><div class="lbl">바삭!</div><div id="count">0</div><div class="bestline">최고 <span id="best">0</span></div></div>
+  <div class="right"><div id="stars"></div><div id="goal"></div><div id="stretch"></div></div>
+</div>
+<div class="bar">
+  <div id="swatches"></div>
+  <button class="btn" id="btnTop">토핑</button>
+  <button class="btn" id="btnSound">소리 켜짐</button>
+  <button class="btn" id="btnReset">다시</button>
+  <button class="btn" id="btnFull">큰화면</button>
+</div>
+<div id="banner"></div>
+<div id="toast"></div>
+<div id="intro">
+  <h1>바삭 버터 말랑이</h1>
+  <p>꾹 누르면 바삭바삭!</p>
+  <p>잡고 쭉~ 당기면 늘어나요</p>
+  <p>두 손가락으로 같이 눌러도 돼요</p>
+  <button id="start">시작!</button>
+</div>
+<script src="vendor/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
